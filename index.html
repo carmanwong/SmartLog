@@ -218,7 +218,9 @@
             
             // UI State
             const [inputText, setInputText] = useState('');
-            const [aiKey, setAiKey] = useState(localStorage.getItem('milktea_ai_key') || '');
+            const HARDCODED_KEY = "AIzaSyBwNmtX2VZZybQBoQorPqH75LvQID5B9H0";
+            const [aiKey, setAiKey] = useState(localStorage.getItem('milktea_ai_key') || HARDCODED_KEY);
+
             const [isProcessing, setIsProcessing] = useState(false);
             const [statusMsg, setStatusMsg] = useState('');
             const [showSettings, setShowSettings] = useState(false);
