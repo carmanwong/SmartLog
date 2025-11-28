@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello Milk Tee - Smart Log (Fixed)</title>
+    <title>Hello Milk Tee - Smart Log (2025 Fixed)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -32,9 +32,8 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 1. 这里是修正后的正确 API 地址 (Gemini 1.5 Flash) ---
-        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
-
+        // --- ⚠️ 核心修复：使用 2025 年最新的 gemini-2.5-flash 模型 ---
+        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
         
         const Icons = {
             Coffee: ({className}) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
@@ -135,12 +134,11 @@
             const scrollRef = useRef(null);
 
             // ---------------------------------------------------------
-            // ⚠️ 步骤 1: 请把你以 AIza 开头的 Key 粘贴到下面引号里
+            // ⚠️ 请在这里填入你的 Key，保留双引号
             // ---------------------------------------------------------
             const HARDCODED_KEY = "AIzaSyBwNmtX2VZZybQBoQorPqH75LvQID5B9H0"; 
 
-            // ⚠️ 步骤 2: 强制使用这个 Key (忽略之前的任何设置)
-            const aiKey = "AIzaSyBwNmtX2VZZybQBoQorPqH75LvQID5B9H0"; 
+            const aiKey = HARDCODED_KEY; 
 
             useEffect(() => {
                 const saved = localStorage.getItem('milktea_local_data_v2');
