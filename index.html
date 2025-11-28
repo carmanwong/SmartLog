@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello Milk Tee - Smart Log</title>
+    <title>Hello Milk Tee - Smart Log (Local)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -61,19 +61,6 @@
 <body class="bg-milk-base text-stone-700 h-screen overflow-hidden flex flex-col">
     <div id="root" class="h-full"></div>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        window.Firebase = {
-            initializeApp, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken,
-            getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, onSnapshot, serverTimestamp, writeBatch
-        };
-        window.dispatchEvent(new Event('firebase-loaded'));
-    </script>
-
     <!-- App Logic -->
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
@@ -91,26 +78,23 @@
             Trash2: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>,
             Link: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
             X: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-            Layers: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12.83 21.41-.66 1.15a.5.5 0 0 1-.84 0l-.66-1.15"/><path d="m16.5 17.5 5.5-10.5L12 2 2.5 7.5l5.5 10.5"/><path d="M2.5 7.5 12 13l9.5-5.5"/><path d="M12 2v11"/></svg>
+            Layers: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12.83 21.41-.66 1.15a.5.5 0 0 1-.84 0l-.66-1.15"/><path d="m16.5 17.5 5.5-10.5L12 2 2.5 7.5l5.5 10.5"/><path d="M2.5 7.5 12 13l9.5-5.5"/><path d="M12 2v11"/></svg>,
+            Save: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         };
 
         // --- AI Helpers ---
         const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
         
-        // Feature 1: Grammar Correction AND Translation to Chinese
         async function cleanTextAI(apiKey, text) {
             const prompt = `
-                You are an assistant for a fashion store staff member who handles Design, Operations, and Admin tasks. 
-                The user has provided a "brain dump" log which might be messy (mixed English, Pinyin, slang). 
+                You are an assistant for a fashion store staff member. 
                 1. Fix grammar and spelling.
                 2. Make it concise and clear.
                 3. Keep the original meaning and tone (first person).
                 4. Crucially, translate the final cleaned text into natural, professional Chinese.
-                Output ONLY the cleaned and translated Chinese text string. No quotes.
-                
+                Output ONLY the cleaned and translated Chinese text string.
                 Input: "${text}"
             `;
-            
             const response = await fetch(`${API_URL}?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -121,66 +105,35 @@
             return data.candidates[0].content.parts[0].text.trim();
         }
 
-        // Feature 2: Task Extraction (Tasks in Chinese) - HYBRID ROLE FOCUS
         async function analyzeTasksAI(apiKey, logText) {
             const prompt = `
-                You are an assistant to a Hybrid Designer & Operations Staff at a fashion store (Hello Milk Tee). 
-                Your goal is to extract ALL actionable tasks found in the log, regardless of whether they are Design, Admin, Finance, Logistics, or Insurance related. 
-                Do NOT ignore admin tasks. The user is responsible for them.
-                
-                Based on the log (which is in Chinese): "${logText}", extract actionable tasks. If the log mentions finishing something, do NOT create a task, but return an empty array.
-                
-                The task structure must be:
-                [ { "title": "<Task Title in Chinese>", "desc": "<Short Description in Chinese>", "time": <Estimated Minutes (Number)>, "category": "admin|design|marketing|finance|ops" } ]
-                
-                Ensure 'time' is a number and 'category' is one of the strings above.
-                Output ONLY the raw JSON array.
+                Extract actionable tasks from this Chinese text: "${logText}".
+                Return empty array if no tasks.
+                Format: [ { "title": "Chinese Title", "desc": "Chinese Desc", "time": Number(minutes), "category": "admin|design|marketing|finance|ops" } ]
+                Output ONLY raw JSON.
             `;
-            
             const response = await fetch(`${API_URL}?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
             const data = await response.json();
-
             if (data.error) throw new Error(data.error.message);
-            
             try {
                 const rawText = data.candidates[0].content.parts[0].text;
                 const jsonStr = rawText.replace(/```json\n|```/g, '').trim();
                 return JSON.parse(jsonStr);
-            } catch (e) {
-                console.error("Failed to parse AI task JSON. Response was:", data.candidates[0].content.parts[0].text, e);
-                return []; 
-            }
+            } catch (e) { return []; }
         }
         
-        // Feature 3: Task Decomposition (HYBRID ROLE AWARE)
         async function decomposeTaskAI(apiKey, task) {
              const prompt = `
-                You are a project manager helping a Hybrid Designer & Operations Staff. 
-                Decompose the following task into 3-5 actionable sub-steps.
-                
+                Decompose this task into 3-5 sub-steps in Chinese Markdown.
                 Task: "${task.title}"
-                Description: "${task.desc}"
-                Category: ${task.category}
-                
-                If the task is DESIGN related: Focus on visual impact, brand consistency, and file prep.
-                If the task is ADMIN/FINANCE/OPS related: Focus on accuracy, efficiency, data checking, and compliance.
-                
-                Output the result in Markdown format.
-                Structure MUST use these headings in Chinese:
-                ## 任务分解：[Task Title]
-                ### 执行步骤 (Action Steps)
-                * **第1步: [Step Title] (约 X 分钟)**
-                    * **执行:** [Action]
-                    * **注意:** [Key Focus/Risk]
-                * ... (Repeat for 3-5 steps)
-                ### 核心焦点 (Core Focus)
-                [1-2 sentences summarizing the key goal. If Admin: focus on accuracy. If Design: focus on aesthetics.]
+                Desc: "${task.desc}"
+                Cat: ${task.category}
+                Headings: ## 任务分解, ### 执行步骤, ### 核心焦点
             `;
-
             const response = await fetch(`${API_URL}?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -191,31 +144,14 @@
             return data.candidates[0].content.parts[0].text.trim();
         }
 
-
-        // Feature 4: Weekly Insight and Focus (HYBRID ROLE AWARE)
         async function generateInsightAI(apiKey, logs) {
-            const recentLogs = logs.map(l => {
-                const date = new Date(l.createdAt?.seconds * 1000).toLocaleString('zh-CN', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                return `[${date}] ${l.text}`;
-            }).slice(0, 30).join('\n'); // Take up to 30 recent logs
-
+            const recentLogs = logs.slice(0, 30).map(l => `[${new Date(l.createdAt).toLocaleString()}] ${l.text}`).join('\n');
             const prompt = `
-                You are a professional Executive Coach advising a Hybrid Designer & Operations Staff. Analyze the following recent work log stream.
-                
-                The user handles BOTH Design (Shopify, Visuals) AND Operations (Insurance, Finance, Admin). Do not criticize them for doing admin work; instead, help them manage the context switching.
-                
-                1. Summarize the major themes worked on (Mixed Design & Ops). Use Chinese.
-                2. Identify potential efficiency bottlenecks (e.g., context switching costs, lack of templates for admin). Use Chinese.
-                3. Provide 3 specific, high-impact focus recommendations for the next week, balancing both Design progress and Operational maintenance. Use Chinese.
-                
-                Format your response in Markdown, using Chinese headings (e.g., ### 总结).
-                
-                Recent Log Stream:
-                ---
+                As an Executive Coach for a Design/Ops staff, analyze these logs:
                 ${recentLogs}
-                ---
+                Provide 1. Summary, 2. Bottlenecks, 3. Focus Recommendations.
+                Use Chinese Markdown.
             `;
-            
             const response = await fetch(`${API_URL}?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -235,7 +171,7 @@
             useEffect(() => {
                 const loadDecomposition = async () => {
                     if (!apiKey) {
-                        setError("错误: 缺少 API Key，无法生成任务分解。");
+                        setError("错误: 缺少 API Key。");
                         setIsLoading(false);
                         return;
                     }
@@ -245,8 +181,7 @@
                         const result = await decomposeTaskAI(apiKey, task);
                         setDecomposition(result);
                     } catch (e) {
-                        setError("生成任务分解时出错: " + e.message);
-                        console.error("Decomposition failed:", e);
+                        setError("生成错误: " + e.message);
                     } finally {
                         setIsLoading(false);
                     }
@@ -258,217 +193,141 @@
 
             return (
                 <div className="modal-backdrop fade-in" onClick={onClose}>
-                    <div 
-                        className="bg-milk-card rounded-2xl p-6 md:p-8 w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl transform transition-all"
-                        onClick={e => e.stopPropagation()} // Prevent closing when clicking inside
-                    >
+                    <div className="bg-milk-card rounded-2xl p-6 md:p-8 w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center border-b pb-3 mb-4 sticky top-0 bg-milk-card z-10">
-                            <h2 className="font-brand text-2xl font-bold text-milk-brand flex items-center gap-2">
-                                <Icons.Layers className="w-6 h-6"/> 任务分解
-                            </h2>
-                            <button onClick={onClose} className="p-2 rounded-full hover:bg-stone-100 text-stone-500">
-                                <Icons.X className="w-5 h-5"/>
-                            </button>
+                            <h2 className="font-brand text-2xl font-bold text-milk-brand flex items-center gap-2"><Icons.Layers className="w-6 h-6"/> 任务分解</h2>
+                            <button onClick={onClose} className="p-2 rounded-full hover:bg-stone-100 text-stone-500"><Icons.X className="w-5 h-5"/></button>
                         </div>
-                        
                         <div className="bg-orange-50 p-4 rounded-xl mb-4 border border-orange-200">
-                             <p className="text-sm text-stone-700"><strong>原始任务:</strong> {task.title} ({task.time}m)</p>
-                             <p className="text-xs text-stone-500 mt-1">{task.desc}</p>
-                             <span className="text-[10px] uppercase font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded mt-2 inline-block">{task.category}</span>
+                             <p className="text-sm text-stone-700"><strong>原始任务:</strong> {task.title}</p>
                         </div>
-
-                        {isLoading && (
-                            <div className="text-center py-12 text-stone-400">
-                                <div className="animate-spin inline-block mr-2"><Icons.Sparkles className="w-5 h-5"/></div>
-                                正在为您的混合角色生成执行计划...
-                            </div>
-                        )}
-                        
-                        {error && (
-                            <div className="text-center py-12 text-red-500 bg-red-50 p-4 rounded-xl border border-red-200">
-                                <p className="font-bold">加载错误:</p>
-                                <p className="text-sm">{error}</p>
-                            </div>
-                        )}
-
-                        {decomposition && (
-                            <div className="prose max-w-none text-stone-700 leading-relaxed">
-                                <div dangerouslySetInnerHTML={{ __html: marked.parse(decomposition) }} />
-                            </div>
-                        )}
+                        {isLoading && <div className="text-center py-12 text-stone-400">正在生成计划...</div>}
+                        {error && <div className="text-red-500">{error}</div>}
+                        {decomposition && <div className="prose max-w-none text-stone-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: marked.parse(decomposition) }} />}
                     </div>
                 </div>
             );
         };
 
 
-        // --- Main App ---
+        // --- Main App (Local Storage Version) ---
         function App() {
-            const [config, setConfig] = useState(null);
-            const [appId, setAppId] = useState('milktee-smartlog');
-            const [user, setUser] = useState(null);
-            
-            // Data
+            // Data State
             const [logs, setLogs] = useState([]);
             const [tasks, setTasks] = useState([]);
             
-            // Input State
+            // UI State
             const [inputText, setInputText] = useState('');
-            const [aiKey, setAiKey] = useState(localStorage.getItem('milktea_ai_key') || '');
+            
+            // ⚠️ 1. 请把你的 Key 粘贴到下面的引号里！
+            const HARDCODED_KEY = "AIzaSyBwNmtX2VZZybQBoQorPqH75LvQID5B9H0"; 
+
+            // ⚠️ 2. 这里会自动读取你的 Key
+            const [aiKey, setAiKey] = useState(localStorage.getItem('milktea_ai_key') || HARDCODED_KEY);
+            
             const [isProcessing, setIsProcessing] = useState(false);
             const [statusMsg, setStatusMsg] = useState('');
             const [showSettings, setShowSettings] = useState(false);
             const [showInsight, setShowInsight] = useState(false); 
             const [insightResult, setInsightResult] = useState('');
-            const [selectedTask, setSelectedTask] = useState(null); // NEW STATE for decomposition
+            const [selectedTask, setSelectedTask] = useState(null);
             
-            const fbRef = useRef({});
             const fileInputRef = useRef(null);
             const scrollRef = useRef(null);
 
-            // 1. Init Firebase
+            // 1. Load from LocalStorage on Mount
             useEffect(() => {
-                if (typeof __firebase_config !== 'undefined') {
-                    const cfg = JSON.parse(__firebase_config);
-                    const id = typeof __app_id !== 'undefined' ? __app_id : 'default';
-                    initFirebase(cfg, id);
-                } else {
-                    const saved = localStorage.getItem('milktea_fb_config');
-                    if(saved) initFirebase(JSON.parse(saved), 'local');
+                const savedData = localStorage.getItem('milktea_local_data');
+                if (savedData) {
+                    try {
+                        const parsed = JSON.parse(savedData);
+                        setLogs(parsed.logs || []);
+                        setTasks(parsed.tasks || []);
+                    } catch (e) {
+                        console.error("Failed to load local data", e);
+                    }
                 }
             }, []);
 
-            const initFirebase = (cfg, id) => {
-                try {
-                    const { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, getFirestore, collection, onSnapshot, doc, deleteDoc, addDoc, updateDoc, serverTimestamp, writeBatch } = window.Firebase;
-                    try { initializeApp(cfg); } catch(e) {}
-                    fbRef.current = { auth: getAuth(), db: getFirestore(), collection, onSnapshot, doc, deleteDoc, addDoc, updateDoc, serverTimestamp, writeBatch };
-                    setConfig(cfg); setAppId(id);
-
-                    const initAuth = async () => {
-                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(fbRef.current.auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(fbRef.current.auth);
-                        }
-                    };
-                    initAuth();
-
-                    onAuthStateChanged(fbRef.current.auth, u => setUser(u));
-                } catch(e) { console.error(e); }
-            };
-
-            // 2. Listeners (Logs & Tasks)
+            // 2. Save to LocalStorage whenever Logs or Tasks change
             useEffect(() => {
-                if (!user) return;
-                const { db, collection, onSnapshot } = fbRef.current;
-                
-                // Listen to Logs (History)
-                const logUnsub = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), snap => {
-                    // DEDUPLICATION LOGIC: Use a Map to ensure unique IDs
-                    const uniqueMap = new Map();
-                    snap.docs.forEach(doc => {
-                        uniqueMap.set(doc.id, { id: doc.id, ...doc.data() });
-                    });
-                    const d = Array.from(uniqueMap.values());
-                    d.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-                    setLogs(d);
-                });
-
-                // Listen to Derived Tasks
-                const taskUnsub = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'tasks'), snap => {
-                    // DEDUPLICATION LOGIC: Use a Map to ensure unique IDs
-                    const uniqueMap = new Map();
-                    snap.docs.forEach(doc => {
-                        uniqueMap.set(doc.id, { id: doc.id, ...doc.data() });
-                    });
-                    const d = Array.from(uniqueMap.values());
-                    d.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-                    setTasks(d);
-                });
-
-                return () => { logUnsub(); taskUnsub(); };
-            }, [user, appId]);
+                const dataToSave = { logs, tasks };
+                localStorage.setItem('milktea_local_data', JSON.stringify(dataToSave));
+            }, [logs, tasks]);
 
             // --- Core Logic ---
             
             const handleSubmit = async (e) => {
                 e.preventDefault();
-                if (!inputText.trim() || !user) return;
-                // Do not use alert()
-                if (!aiKey) { setShowSettings(true); setStatusMsg("错误: 请先设置您的 API Key！"); return; }
+                if (!inputText.trim()) return;
+                if (!aiKey || aiKey === "请在这里粘贴你的AIza开头的Key") { setShowSettings(true); setStatusMsg("错误: 请先设置您的 API Key！"); return; }
                 
                 setShowInsight(false);
-
                 const rawText = inputText;
                 setInputText('');
                 setIsProcessing(true);
-                setStatusMsg('步骤 1: 正在清理、翻译并修正语法...');
+                setStatusMsg('1/3: 正在整理...');
 
                 try {
-                    const { db, collection, addDoc, serverTimestamp } = fbRef.current;
-                    
-                    // 1. AI Clean and Translate Text
+                    // 1. AI Clean
                     let cleanedText = rawText;
-                    try {
-                        cleanedText = await cleanTextAI(aiKey, rawText);
-                    } catch (err) {
-                        console.warn("Cleaning and translation failed, using raw text", err);
-                        setStatusMsg('语法修正和翻译失败，将使用原始文本记录。');
-                    }
+                    try { cleanedText = await cleanTextAI(aiKey, rawText); } 
+                    catch (err) { console.warn("AI failed, using raw", err); }
 
-                    // 2. Save Log
-                    setStatusMsg('步骤 2: 正在保存到记忆流...');
-                    await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'), {
+                    // 2. Save Log (Locally)
+                    const newLog = {
+                        id: Date.now().toString(),
                         raw: rawText,
                         text: cleanedText,
-                        createdAt: serverTimestamp(),
+                        createdAt: new Date().toISOString(), // Use simple ISO string for local
                         type: 'log'
-                    });
-
-                    // 3. AI Analyze for Tasks (Task generation is now instructed to focus on designer tasks)
-                    setStatusMsg('步骤 3: 正在分析并提取任务 (混合角色)...');
-                    const newTasks = await analyzeTasksAI(aiKey, cleanedText);
+                    };
                     
-                    if (newTasks && newTasks.length > 0) {
-                         newTasks.forEach(async t => {
-                             await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'tasks'), {
-                                 ...t,
-                                 createdAt: serverTimestamp(),
-                                 done: false,
-                                 sourceLog: cleanedText
-                             });
-                         });
-                         setStatusMsg(`已添加 ${newTasks.length} 个新任务 (中文)!`);
-                    } else {
-                        setStatusMsg('日志已记录。未检测到新任务。');
-                    }
+                    // Update State (will trigger auto-save)
+                    setLogs(prev => [newLog, ...prev]);
 
-                    setTimeout(() => { setIsProcessing(false); setStatusMsg(''); }, 2000);
+                    // 3. AI Tasks
+                    setStatusMsg('2/3: 提取任务...');
+                    const newTasksRaw = await analyzeTasksAI(aiKey, cleanedText);
+                    
+                    if (newTasksRaw && newTasksRaw.length > 0) {
+                         const newTasks = newTasksRaw.map((t, idx) => ({
+                             ...t,
+                             id: Date.now() + '-' + idx,
+                             createdAt: new Date().toISOString(),
+                             done: false,
+                             sourceLog: cleanedText
+                         }));
+                         setTasks(prev => [...newTasks, ...prev]);
+                         setStatusMsg(`已添加 ${newTasks.length} 个任务!`);
+                    } else {
+                        setStatusMsg('完成。');
+                    }
 
                 } catch (e) {
                     setStatusMsg("错误: " + e.message);
-                    console.error("提交日志失败:", e);
+                    setInputText(rawText);
+                } finally {
                     setIsProcessing(false);
-                    setInputText(rawText); // restore text
+                    setTimeout(() => setStatusMsg(''), 2000);
                 }
             };
             
             const handleGenerateInsight = async () => {
-                if (!aiKey) { setShowSettings(true); setStatusMsg("错误: 请先设置您的 API Key！"); return; }
-                if (logs.length === 0) { setStatusMsg("错误: 请先记录一些活动！"); return; }
+                if (!aiKey) { setShowSettings(true); return; }
+                if (logs.length === 0) return;
 
-                setShowInsight(true); // Switch view
-                setInsightResult(''); // Clear previous result
+                setShowInsight(true);
+                setInsightResult('');
                 setIsProcessing(true);
-                setStatusMsg('正在生成每周洞察与焦点分析 (混合角色)...');
+                setStatusMsg('正在生成周报...');
 
                 try {
                     const result = await generateInsightAI(aiKey, logs); 
                     setInsightResult(result);
-                    setStatusMsg('洞察报告已生成!');
+                    setStatusMsg('已生成!');
                 } catch (e) {
-                    setInsightResult('生成洞察时出错: ' + e.message);
+                    setInsightResult('出错: ' + e.message);
                 } finally {
                     setIsProcessing(false);
                     setTimeout(() => setStatusMsg(''), 2000);
@@ -480,268 +339,141 @@
                 const blob = new Blob([JSON.stringify(bundle)], {type: "application/json"});
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url; a.download = `milktee_full_backup.json`; a.click();
+                a.href = url; a.download = `milktee_backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
             };
 
             const handleImport = (e) => {
                 const file = e.target.files[0];
                 if(!file) return;
                 const reader = new FileReader();
-                reader.onload = async (ev) => {
+                reader.onload = (ev) => {
                     try {
                         const data = JSON.parse(ev.target.result);
-                        const { db, collection, doc, writeBatch, serverTimestamp } = fbRef.current;
-                        const batch = writeBatch(db);
-                        
-                        if(data.logs) data.logs.forEach(l => {
-                            const ref = doc(collection(db, 'artifacts', appId, 'users', user.uid, 'logs'));
-                            batch.set(ref, { ...l, createdAt: serverTimestamp(), imported: true });
-                        });
-                        if(data.tasks) data.tasks.forEach(t => {
-                            const ref = doc(collection(db, 'artifacts', appId, 'users', user.uid, 'tasks'));
-                            batch.set(ref, { ...t, createdAt: serverTimestamp(), imported: true });
-                        });
-                        await batch.commit();
-                        setStatusMsg("Memory Injected Successfully!");
+                        if(data.logs) setLogs(data.logs);
+                        if(data.tasks) setTasks(data.tasks);
+                        setStatusMsg("数据已恢复!");
                         setTimeout(() => setStatusMsg(''), 2000);
-                    } catch(err) { setStatusMsg("Import failed"); }
+                    } catch(err) { setStatusMsg("文件格式错误"); }
                 };
                 reader.readAsText(file);
             };
 
-            const toggleTask = async (id, currentStat) => {
-                const { db, doc, updateDoc } = fbRef.current;
-                await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', id), { done: !currentStat });
+            const toggleTask = (id) => {
+                setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
             };
 
-            const deleteTask = async (id) => {
-                if(window.prompt("确认删除此任务？请输入 'YES'") !== 'YES') return;
-                const { db, doc, deleteDoc } = fbRef.current;
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'tasks', id));
+            const deleteTask = (id) => {
+                if(window.confirm("确定删除吗?")) {
+                    setTasks(prev => prev.filter(t => t.id !== id));
+                }
             };
 
-            const formatDate = (seconds) => {
-                if (!seconds) return '刚刚';
-                const date = new Date(seconds * 1000);
-                return new Intl.DateTimeFormat('zh-CN', { 
-                    weekday: 'short', 
-                    month: 'short', 
-                    day: 'numeric', 
-                    hour: 'numeric', 
-                    minute: 'numeric' 
-                }).format(date);
+            const formatDate = (isoString) => {
+                if (!isoString) return '刚刚';
+                return new Date(isoString).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' });
             };
-
-            // Config Screen
-            if (!config && typeof __firebase_config === 'undefined') {
-                return (
-                    <div className="flex h-screen items-center justify-center bg-milk-base p-4">
-                         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center">
-                             <h2 className="font-brand font-bold text-2xl text-milk-dark mb-4">设置要求</h2>
-                             <textarea className="w-full h-32 border p-2 rounded mb-4 text-xs" placeholder='Firebase JSON' onBlur={e=>localStorage.setItem('milktea_fb_config', e.target.value)}></textarea>
-                             <button onClick={()=>window.location.reload()} className="bg-stone-800 text-white px-6 py-2 rounded-full">保存并重新加载</button>
-                         </div>
-                    </div>
-                );
-            }
 
             return (
                 <div className="flex h-full max-w-6xl mx-auto w-full bg-white shadow-2xl overflow-hidden md:rounded-2xl md:my-4 md:border border-stone-100">
                     <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" />
 
-                    {/* Task Detail Modal */}
-                    {selectedTask && (
-                        <TaskDetailModal 
-                            task={selectedTask} 
-                            onClose={() => setSelectedTask(null)} 
-                            apiKey={aiKey}
-                        />
-                    )}
+                    {selectedTask && <TaskDetailModal task={selectedTask} onClose={() => setSelectedTask(null)} apiKey={aiKey} />}
 
-                    {/* Left Panel: Log Stream (The Memory) */}
+                    {/* Left Panel: Log Stream */}
                     <div className="w-full md:w-5/12 bg-stone-50 border-r border-stone-100 flex flex-col">
                         <header className="p-4 border-b border-stone-200 bg-white flex justify-between items-center">
                             <h1 className="font-brand font-bold text-xl text-milk-dark flex items-center gap-2">
-                                <Icons.Brain className="w-6 h-6 text-purple-600" /> 日志流 (Log Stream)
+                                <Icons.Brain className="w-6 h-6 text-purple-600" /> 日志流
                             </h1>
                             <div className="flex gap-2">
-                                <button onClick={handleExport} className="text-stone-400 hover:text-stone-600" title="导出数据"><Icons.Download className="w-5 h-5"/></button>
-                                <button onClick={()=>fileInputRef.current.click()} className="text-stone-400 hover:text-stone-600" title="导入数据"><Icons.Upload className="w-5 h-5"/></button>
-                                <button onClick={()=>setShowSettings(!showSettings)} className={`transition-colors ${!aiKey ? 'text-red-500 animate-pulse' : 'text-stone-400'}`} title="API Key 设置"><Icons.Settings className="w-5 h-5"/></button>
+                                <div className="text-[10px] text-stone-400 flex items-center gap-1 border border-stone-200 px-2 rounded-full">
+                                    <Icons.Save className="w-3 h-3"/> 自动保存中
+                                </div>
+                                <button onClick={handleExport} className="text-stone-400 hover:text-stone-600" title="备份下载"><Icons.Download className="w-5 h-5"/></button>
+                                <button onClick={()=>fileInputRef.current.click()} className="text-stone-400 hover:text-stone-600" title="导入备份"><Icons.Upload className="w-5 h-5"/></button>
+                                <button onClick={()=>setShowSettings(!showSettings)} className={`transition-colors ${!aiKey || aiKey.includes("请在这里") ? 'text-red-500 animate-pulse' : 'text-stone-400'}`}><Icons.Settings className="w-5 h-5"/></button>
                             </div>
                         </header>
                         
-                        {/* Settings Panel (Inline) */}
                         {showSettings && (
                             <div className="p-4 bg-stone-800 text-white">
                                 <div className="flex justify-between items-center mb-2">
-                                    <label className="text-xs uppercase font-bold tracking-wider block text-stone-400">Gemini API Key</label>
-                                    <a href="https://aistudio.google.com/app/apikey" target="_blank" className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-bold">
-                                        <Icons.Link className="w-3 h-3" /> 获取免费 Key
-                                    </a>
+                                    <label className="text-xs font-bold text-stone-400">Gemini API Key</label>
+                                    <a href="https://aistudio.google.com/app/apikey" target="_blank" className="text-xs text-amber-400">获取 Key</a>
                                 </div>
                                 <div className="flex gap-2">
-                                    <input type="password" value={aiKey} onChange={e=>setAiKey(e.target.value)} className="flex-1 bg-stone-700 rounded px-3 py-2 text-sm outline-none border border-stone-600 focus:border-amber-500" placeholder="AIzaSy..." />
-                                    <button onClick={()=>{localStorage.setItem('milktea_ai_key', aiKey); setShowSettings(false);}} className="bg-amber-600 px-4 rounded text-sm font-bold hover:bg-amber-500">保存</button>
+                                    <input type="password" value={aiKey} onChange={e=>setAiKey(e.target.value)} className="flex-1 bg-stone-700 rounded px-2 text-sm" />
+                                    <button onClick={()=>{localStorage.setItem('milktea_ai_key', aiKey); setShowSettings(false);}} className="bg-amber-600 px-3 rounded text-sm">保存</button>
                                 </div>
                             </div>
                         )}
 
                         <div className="flex-1 overflow-y-auto p-4 space-y-6" ref={scrollRef}>
-                            {logs.length === 0 && (
-                                <div className="text-center py-10 text-stone-400">
-                                    <p className="text-sm">暂无日志。请在下方输入您的想法！</p>
-                                </div>
-                            )}
+                            {logs.length === 0 && <div className="text-center py-10 text-stone-400 text-sm">暂无日志。所有数据将保存在此浏览器中。</div>}
                             {logs.map((log) => (
                                 <div key={log.id} className="relative pl-4 border-l-2 border-stone-200 fade-in">
                                     <div className="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-stone-300"></div>
-                                    <div className="text-[10px] font-mono text-stone-400 uppercase tracking-wider mb-1">
-                                        {formatDate(log.createdAt?.seconds)}
-                                    </div>
-                                    <div className="text-stone-800 text-sm leading-relaxed whitespace-pre-wrap">
-                                        {log.text}
-                                    </div>
-                                    {log.raw !== log.text && (
-                                        <div className="mt-1 text-[10px] text-purple-400 flex items-center gap-1">
-                                            <Icons.Sparkles className="w-3 h-3" /> 语法修正/翻译
-                                        </div>
-                                    )}
+                                    <div className="text-[10px] font-mono text-stone-400 mb-1">{formatDate(log.createdAt)}</div>
+                                    <div className="text-stone-800 text-sm whitespace-pre-wrap">{log.text}</div>
                                 </div>
                             ))}
                         </div>
 
-                        {/* Input Area */}
                         <div className="p-4 bg-white border-t border-stone-200 z-10">
-                            {isProcessing && (
-                                <div className="mb-2 text-xs font-bold text-amber-600 animate-pulse flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-amber-600 rounded-full"></span>
-                                    {statusMsg}
-                                </div>
-                            )}
+                            {isProcessing && <div className="mb-2 text-xs font-bold text-amber-600 animate-pulse">{statusMsg}</div>}
                             <form onSubmit={handleSubmit} className="relative">
                                 <textarea 
                                     value={inputText}
                                     onChange={e=>setInputText(e.target.value)}
-                                    className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 pr-12 text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all resize-none"
+                                    className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 pr-12 text-sm outline-none focus:ring-2 focus:ring-amber-500 resize-none"
                                     rows="3"
-                                    placeholder="输入凌乱的想法，让 AI 帮你整理和提取任务..."
+                                    placeholder="输入想法..."
                                     disabled={isProcessing}
                                     onKeyDown={e => { if(e.key === 'Enter' && !e.shiftKey) handleSubmit(e); }}
                                 ></textarea>
-                                <button 
-                                    type="submit" 
-                                    disabled={!inputText.trim() || isProcessing}
-                                    className="absolute right-2 bottom-2 p-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-transform active:scale-95"
-                                    title="分析并添加到日志"
-                                >
+                                <button type="submit" disabled={!inputText.trim() || isProcessing} className="absolute right-2 bottom-2 p-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50">
                                     <Icons.Send className="w-4 h-4" />
                                 </button>
                             </form>
                         </div>
                     </div>
 
-                    {/* Right Panel: Smart Dashboard (The Tasks / Insight) */}
+                    {/* Right Panel: Tasks */}
                     <div className="hidden md:flex w-7/12 bg-white flex-col">
                         <header className="p-4 border-b border-stone-100 flex justify-between items-center">
-                            <h2 className="font-brand font-bold text-xl text-milk-brand flex items-center gap-2">
-                                <Icons.Coffee className="w-6 h-6" /> {showInsight ? '每周焦点分析' : '待办任务'}
-                            </h2>
+                            <h2 className="font-brand font-bold text-xl text-milk-brand flex items-center gap-2"><Icons.Coffee className="w-6 h-6" /> {showInsight ? '周报' : '待办'}</h2>
                             {!showInsight && (
                                 <div className="flex gap-2 items-center">
-                                    <button 
-                                        onClick={handleGenerateInsight} 
-                                        disabled={isProcessing || logs.length === 0}
-                                        className="text-xs font-bold bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-full transition-colors flex items-center gap-1 disabled:opacity-50"
-                                        title="分析日志并生成每周焦点报告"
-                                    >
+                                    <button onClick={handleGenerateInsight} disabled={isProcessing || logs.length === 0} className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full flex items-center gap-1 hover:bg-purple-200">
                                         <Icons.Sparkles className="w-4 h-4"/> Weekly Focus
                                     </button>
-                                    <div className="text-xs font-bold bg-amber-50 text-amber-700 px-3 py-1 rounded-full">
-                                        {tasks.filter(t => !t.done).length} 待处理
-                                    </div>
                                 </div>
                             )}
-                            {showInsight && (
-                                <button 
-                                    onClick={() => setShowInsight(false)} 
-                                    className="text-sm font-bold bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 py-1 rounded-full transition-colors"
-                                >
-                                    返回任务
-                                </button>
-                            )}
+                            {showInsight && <button onClick={() => setShowInsight(false)} className="text-sm bg-stone-100 px-3 py-1 rounded-full">返回</button>}
                         </header>
 
                         <div className="flex-1 overflow-y-auto p-6 bg-dots">
-                            {/* Insight View */}
-                            {showInsight && (
+                            {showInsight ? (
                                 <div className="fade-in bg-white p-6 rounded-2xl shadow-xl border border-purple-200">
-                                    <h3 className="text-purple-600 font-extrabold text-2xl mb-4 flex items-center gap-2 font-brand">
-                                        <Icons.Sparkles className="w-6 h-6"/> AI 洞察报告 (混合角色)
-                                    </h3>
-                                    {insightResult ? (
-                                        // Render markdown content from LLM
-                                        <div 
-                                            className="prose max-w-none text-stone-700 leading-loose"
-                                            dangerouslySetInnerHTML={{ __html: marked.parse(insightResult) }} 
-                                        />
-                                    ) : (
-                                        <div className="text-center py-12 text-stone-400">
-                                            <div className="animate-spin inline-block mr-2"><Icons.Sparkles className="w-5 h-5"/></div>
-                                            {statusMsg || "正在加载分析..."}
-                                        </div>
-                                    )}
+                                    <h3 className="text-purple-600 font-bold text-xl mb-4 flex items-center gap-2"><Icons.Sparkles className="w-5 h-5"/> AI 分析</h3>
+                                    {insightResult ? <div className="prose text-sm text-stone-700" dangerouslySetInnerHTML={{ __html: marked.parse(insightResult) }} /> : <div className="text-center text-stone-400">分析中...</div>}
                                 </div>
-                            )}
-
-                            {/* Task List View */}
-                            {!showInsight && (
+                            ) : (
                                 <div className="grid grid-cols-1 gap-3">
-                                    {tasks.length === 0 ? (
-                                        <div className="border-2 border-dashed border-stone-100 rounded-2xl p-10 text-center">
-                                            <p className="text-stone-400 font-brand text-lg">当前任务清空。</p>
-                                            <p className="text-stone-300 text-sm mt-2">AI 会根据您的**混合角色日志**自动生成任务。</p>
-                                        </div>
-                                    ) : tasks.map(task => (
-                                        <div 
-                                            key={task.id} 
-                                            className={`group bg-white border border-stone-100 p-4 rounded-xl shadow-sm hover:shadow-md transition-all flex items-start gap-3 fade-in cursor-pointer ${task.done ? 'opacity-60 bg-stone-50' : 'hover:border-amber-300'}`}
-                                            onClick={() => setSelectedTask(task)} // Click to open decomposition
-                                        >
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); toggleTask(task.id, task.done); }}
-                                                className={`mt-1 w-5 h-5 rounded border flex items-center justify-center transition-colors ${task.done ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-stone-300 hover:border-emerald-400'}`}
-                                            >
+                                    {tasks.length === 0 && <div className="text-center text-stone-300 py-10">任务列表为空</div>}
+                                    {tasks.map(task => (
+                                        <div key={task.id} className={`group bg-white border border-stone-100 p-4 rounded-xl shadow-sm hover:shadow-md transition-all flex items-start gap-3 cursor-pointer ${task.done ? 'opacity-60 bg-stone-50' : 'hover:border-amber-300'}`} onClick={() => setSelectedTask(task)}>
+                                            <button onClick={(e) => { e.stopPropagation(); toggleTask(task.id); }} className={`mt-1 w-5 h-5 rounded border flex items-center justify-center ${task.done ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-stone-300'}`}>
                                                 {task.done && <Icons.CheckCircle className="w-3 h-3" />}
                                             </button>
-                                            
                                             <div className="flex-1">
-                                                <div className="flex justify-between items-start">
-                                                    <h3 className={`font-bold text-stone-800 ${task.done ? 'line-through text-stone-400' : ''}`}>{task.title}</h3>
-                                                    <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">{task.time}m</span>
+                                                <div className="flex justify-between">
+                                                    <h3 className={`font-bold text-stone-800 ${task.done ? 'line-through' : ''}`}>{task.title}</h3>
+                                                    <span className="text-[10px] text-stone-400 bg-stone-100 px-1 rounded">{task.time}m</span>
                                                 </div>
-                                                
-                                                {task.desc && <p className="text-xs text-stone-500 mt-1">{task.desc}</p>}
-                                                
-                                                <div className="mt-3 flex justify-between items-center">
-                                                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                                                        task.category === 'design' ? 'bg-rose-50 text-rose-600' :
-                                                        task.category === 'marketing' ? 'bg-orange-50 text-orange-600' :
-                                                        task.category === 'admin' ? 'bg-slate-50 text-slate-600' :
-                                                        task.category === 'finance' ? 'bg-green-50 text-green-600' :
-                                                        'bg-blue-50 text-blue-600'
-                                                    }`}>
-                                                        {task.category || 'general'}
-                                                    </span>
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} 
-                                                            className="text-stone-300 hover:text-red-400" 
-                                                            title="删除任务"
-                                                        >
-                                                            <Icons.Trash2 className="w-4 h-4"/>
-                                                        </button>
-                                                    </div>
+                                                <div className="mt-2 flex justify-between">
+                                                    <span className="text-[10px] uppercase font-bold text-stone-400">{task.category}</span>
+                                                    <button onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} className="opacity-0 group-hover:opacity-100 text-stone-300 hover:text-red-400"><Icons.Trash2 className="w-4 h-4"/></button>
                                                 </div>
                                             </div>
                                         </div>
